@@ -1,3 +1,3 @@
 <p align="center">
-  <img src="http://some_place.com/image.png" />
+  <img src="https://github.com/dedisvoin/QuinLang/blob/main/logo.png" />
 </p>
