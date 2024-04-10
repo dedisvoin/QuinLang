@@ -11,6 +11,8 @@ The `NumberValue` and `StringValue` classes represent values of the correspondin
 class ValueTypes:
     NUMBER = 'NUMBER'
     STRING = 'STRING'
+    BOOL = 'BOOL'
+    NONE = 'NONE'
 
     class NumberValue:
         def __init__(self, value) -> None:
@@ -21,6 +23,16 @@ class ValueTypes:
         def __init__(self, value) -> None:
             self.value = value
             self.type = ValueTypes.STRING
+
+    class BoolValue:
+        def __init__(self, value) -> None:
+            self.value = value
+            self.type = ValueTypes.BOOl
+
+    class NoneValue:
+        def __init__(self) -> None:
+            self.value = None
+            self.type = ValueTypes.NONE
 
 
 
@@ -44,7 +56,7 @@ class Variables:
     @classmethod
     def print_vars(self):
         for name in self.vars_map:
-            print(name,':', self.vars_map[name].value)
+            print(name,':', self.vars_map[name][0].value,'changed:', self.vars_map[name][1])
 
     @classmethod
     def push(self):
@@ -68,5 +80,10 @@ class Variables:
         else:                       return self.vars_map[key]
 
     @classmethod
-    def set(self, name: str, val):
-        self.vars_map[name] = val
+    def get_type(self, key):
+        if not self.is_exists(key):  return self.zero
+        else:                       return self.vars_map[key][1]
+
+    @classmethod
+    def set(self, name: str, val, changed=True):
+        self.vars_map[name] = (val, copy(changed))

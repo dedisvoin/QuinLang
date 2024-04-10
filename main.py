@@ -3,6 +3,7 @@ from source.TokenizeFunct import (
     Lexems
 )
 from source.ParserFunct import Parser
+
 from source.VariablesFunct import (
     Variables
 )
@@ -30,7 +31,6 @@ class Interpretator:
 
 interpretator = Interpretator('test.qn')
 interpretator.run_tokenize()
-interpretator.view_tokens_map()
 interpretator.run_parse()
 
 

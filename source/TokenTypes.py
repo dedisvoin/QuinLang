@@ -9,6 +9,8 @@ class TokenTypes:
     NEW_LINE = 'NEW_LINE'
 
     PLUS = 'PLUS'
+    PLUS_PLUS = 'PLUS_PLUS'
+    MINUS_MINUS = 'MINUS_MINUS'
     MINUS = 'MINUS'
     RAVNO = 'RAVNO'
     EQUAL = 'EQUAl'
@@ -30,3 +32,9 @@ class TokenTypes:
     OR = 'OR'
 
     EOF = 'EOF'
+
+    TRUE = 'TRUE'
+    FALSE = 'FALSE'
+
+    VAR = 'VAR'
+    CONST = 'CONST'

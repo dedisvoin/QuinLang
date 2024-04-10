@@ -188,6 +188,7 @@ class Tokenize:
     """
     def tokenize(self):
         self.tokenize_base()
+        self.pos = 0
         for base_token in self.base_tokens:
 
             if base_token.type == TokenTypes.NEW_LINE:
@@ -199,6 +200,14 @@ class Tokenize:
                     self.add_token(TokenTypes.FUNCTION, 'fn')
                 elif base_token.text == 'or':
                     self.add_token(TokenTypes.OR, 'or')
+                elif base_token.text == 'true':
+                    self.add_token(TokenTypes.TRUE, 'true')
+                elif base_token.text == 'false':
+                    self.add_token(TokenTypes.FALSE, 'false')
+                elif base_token.text == 'var':
+                    self.add_token(TokenTypes.VAR, 'var')
+                elif base_token.text == 'const':
+                    self.add_token(TokenTypes.CONST, 'const')
                 else:
                     self.add_token(TokenTypes.WORD, base_token.text)
 
@@ -224,6 +233,12 @@ class Tokenize:
 
                 if base_token.text == '+':
                     self.add_token(TokenTypes.PLUS, '+')
+                
+                if base_token.text == '++':
+                    self.add_token(TokenTypes.PLUS_PLUS, '++')
+
+                if base_token.text == '--':
+                    self.add_token(TokenTypes.MINUS_MINUS, '--')
 
                 if base_token.text == '-':
                     self.add_token(TokenTypes.MINUS, '-')
@@ -255,6 +270,8 @@ class Tokenize:
                 self.add_token(TokenTypes.TEXT, base_token.text)
 
         self.add_token(TokenTypes.EOF, 'EOF')
+        
+        
 
 if __name__ == '__main__':
     tokenize = Tokenize('test.txt')
