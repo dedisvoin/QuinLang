@@ -1,4 +1,5 @@
 from source.VariablesFunct import *
+from source.FunctionsFunct import *
 from source.ParseStringFunct import *
 from source.Errors import *
 
@@ -30,9 +31,34 @@ class NumberExp(Expression):
     def to_str(self):
         print( self.__class__.__name__, self.number.value)
 
+class ArrayExp(Expression):
+    def __init__(self, values) -> None:
+        self.arr = ValueTypes.ArrayValue(values)
+
+    def eval(self):
+        return self.arr
+    
+    def to_str(self):
+        print( self.__class__.__name__, self.arr.value)
+
+class ArrayTwoNumberExp(Expression):
+    def __init__(self, value_1, value_2, step=1) -> None:
+        rangering = []
+
+        for i in range(value_1.value, value_2.value+1, step):
+            rangering.append(ValueTypes.NumberValue(i))
+        
+        self.arr = ValueTypes.ArrayValue(rangering)
+
+    def eval(self):
+        return self.arr
+    
+    def to_str(self):
+        print( self.__class__.__name__, self.arr.value)
+
 class BoolExp(Expression):
     def __init__(self, value: bool) -> None:
-        self.value = ValueTypes.NumberValue(value)
+        self.value = ValueTypes.BoolValue(value)
 
     def eval(self):
         return self.value
@@ -80,6 +106,14 @@ class UnaryExp(Expression):
                     return  ValueTypes.NumberValue(result-1)
                 case _:
                     return  ValueTypes.NumberValue(result)
+        elif result.type == ValueTypes.BOOL:
+            result = result.value
+            match self.operation:
+                case 'not':
+                    return  ValueTypes.BoolValue(not result)
+                case _:
+                    return ValueTypes.BoolValue(result)
+                
         else:
             BaseError.NOT_SUPORTED_UNARY_TYPE(result.type, self.operation)
             
@@ -107,6 +141,17 @@ class BinaryExp(Expression):
             value1 = value1[0]
         if isinstance(value2, tuple):
             value2 = value2[0]
+
+        if value1.type == ValueTypes.ARRAY and value2.type == ValueTypes.ARRAY:
+            n1 = value1.value
+            n2 = value2.value
+
+            match self.operation:
+                case '+':
+                    return ValueTypes.ArrayValue( n1 + n2 )
+
+                case _:
+                    BaseError.NOT_SUPORTED_NUMBER_OPERATION(self.operation)
         
         if value1.type == ValueTypes.NUMBER and value2.type == ValueTypes.NUMBER:
             n1 = value1.value
@@ -174,14 +219,80 @@ The `eval()` method returns the numeric value of the variable by looking it up i
 The `to_str()` method returns the name of the variable as a string.
 """
 class VariableExp(Expression):
-    def __init__(self, name) -> None:
-          self.name = name
+    def __init__(self, name, index = None) -> None:
+        self.name = name
+        self.index = index
+        
 
     def eval(self):
+        
         if not Variables.is_exists(self.name): 
              BaseError.VARIABLE_NOT_FOUND(self.name)
-        return Variables.get(self.name)
+        if self.index is None:
+            return Variables.get(self.name)
+        else:
+            var = Variables.get(self.name)[0].value[self.index]
+            return var
     
     def to_str(self):
         return f'{self.name}'
     
+class ArrVariableExp(Expression):
+    def __init__(self, name, index) -> None:
+          self.name = name
+          self.index = index
+
+    def eval(self):
+        
+        if not Variables.is_exists(self.name): 
+             BaseError.VARIABLE_NOT_FOUND(self.name)
+        return Variables.get(self.name).value[self.index]
+    
+    def to_str(self):
+        return f'{self.name}'
+    
+class FunctionExp(Expression):
+    def __init__(self, name, arguments=[]) -> None:
+        self.name = name
+        self.arguments = arguments
+
+    def add_arg(self, arg):
+         self.arguments.append(arg)
+
+    def eval(self):
+        values = []
+        
+        for arg in self.arguments:
+            evaled_argument = arg.eval()
+            values.append(evaled_argument)
+        
+        fun = Functions.get(self.name)
+        
+        if isinstance(fun, BaseFunction):
+            call_vales = []
+            for val in values:
+                if isinstance(val, tuple):
+                    val = val[0]
+                call_vales.append(val)
+            
+            return fun.exec(call_vales)
+        
+    def exec(self):
+        values = []
+        
+        for arg in self.arguments:
+            evaled_argument = arg.eval()
+            values.append(evaled_argument)
+        
+        fun = Functions.get(self.name)
+
+        if isinstance(fun, BaseFunction):
+            call_vales = []
+            for val in values:
+                if isinstance(val, tuple):
+                    val = val[0]
+                call_vales.append(val)
+            
+            return fun.exec(call_vales)
+        
+        

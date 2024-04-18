@@ -19,6 +19,10 @@ class Interpretator:
     def view_tokens_map(cls):
         cls.tokenizor.out_tokens()
         return cls
+    
+    def view_base_tokens_map(cls):
+        cls.tokenizor.out_base_tokens()
+        return cls
 
     def run_tokenize(cls):
         cls.tokenizor.tokenize()
@@ -28,11 +32,10 @@ class Interpretator:
         cls.parser.exec_code()
         return cls
 
-
 interpretator = Interpretator('test.qn')
 interpretator.run_tokenize()
+interpretator.view_base_tokens_map()
+interpretator.view_tokens_map()
 interpretator.run_parse()
 
 
-
-Variables.print_vars()

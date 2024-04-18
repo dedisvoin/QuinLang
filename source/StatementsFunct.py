@@ -25,17 +25,22 @@ class Statements:
             self.name = name
             self.expr = expr
             self.changed = changed
+            self.exec()
+            
         
         def exec(self):
             result = self.expr.eval()
+            
             if isinstance(result, tuple):
                 result = result[0]
-        
+
+            
 
             if self.changed:
                 Variables.set(self.name, result, True)
             else:
                 Variables.set(self.name, result, False)
+            
 
     class AsignetBaseNewVar:
         def __init__(self, name: str, changed=False) -> None:
@@ -61,19 +66,31 @@ class Statements:
         exec(): Evaluates the expression and sets the value of the variable using the `Variables.set()` function. If the variable already exists, it updates the value. If the variable does not exist or the type is incorrect, it prints an error message and exits.
     """
     class Asignet:
-        def __init__(self, name: str, expr) -> None:
+        def __init__(self, name: str, expr, index=None) -> None:
             self.name = name
             self.expr = expr
+            self.index = index
         
         def exec(self):
             result = self.expr.eval()
             if Variables.is_exists(self.name):
                 var_type = Variables.get_type(self.name)
                 if var_type:
-                    Variables.set(self.name, result, True)
+                    if self.index is None:
+                        Variables.set(self.name, result, True)
+                    else:
+                        Variables.set(self.name, result, True, self.index)
                 else:
                     BaseError.NOT_CHAINGABLE_VAR(self.name)
             else:
                 BaseError.VARIABLE_NOT_FOUND(self.name)
                         
+    class Function:
+        def __init__(self, expr: str):
+            self.expr = expr
 
+        def eval(self):
+            self.expr.eval()
+
+        def to_str(self):
+            return 'Funtion state'

@@ -38,7 +38,7 @@ class StringParse:
 
         values = {}
         for name in self.values:
-            values[name] = self.values[name].value
+            values[name] = self.values[name][0].value
 
         self.parsed_string = self.string.format(**values)
 

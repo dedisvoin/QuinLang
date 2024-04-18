@@ -13,6 +13,7 @@ class ValueTypes:
     STRING = 'STRING'
     BOOL = 'BOOL'
     NONE = 'NONE'
+    ARRAY = 'ARRAY'
 
     class NumberValue:
         def __init__(self, value) -> None:
@@ -27,12 +28,17 @@ class ValueTypes:
     class BoolValue:
         def __init__(self, value) -> None:
             self.value = value
-            self.type = ValueTypes.BOOl
+            self.type = ValueTypes.BOOL
 
     class NoneValue:
         def __init__(self) -> None:
             self.value = None
             self.type = ValueTypes.NONE
+
+    class ArrayValue:
+        def __init__(self, values) -> None:
+            self.value = values
+            self.type = ValueTypes.ARRAY
 
 
 
@@ -85,5 +91,8 @@ class Variables:
         else:                       return self.vars_map[key][1]
 
     @classmethod
-    def set(self, name: str, val, changed=True):
-        self.vars_map[name] = (val, copy(changed))
+    def set(self, name: str, val, changed=True, index=None):
+        if index is None:
+            self.vars_map[name] = (val, copy(changed))
+        else:
+            self.vars_map[name][0].value[index] = copy(val)

@@ -26,6 +26,7 @@ class TokenTypes:
     BL_SCOB_L = 'BL_SCOB_L'
 
     ZAPYT = 'ZAPYT'
+    DOUBLE_DOT = 'DOUBLE_DOT'
 
     FUNCTION = 'FUNCTION'
 
@@ -38,3 +39,5 @@ class TokenTypes:
 
     VAR = 'VAR'
     CONST = 'CONST'
+
+    NOT = 'NOT'

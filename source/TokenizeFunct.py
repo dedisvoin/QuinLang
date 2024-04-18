@@ -7,7 +7,7 @@ This class defines various character sets used for tokenizing text, including th
 class Lexems:
     alphabet = 'abcdefghijklmnopqrstuvwxyz'+'abcdefghijklmnopqrstuvwxyz'.upper()
     numbers = '1234567890'
-    syms = '-%+*/:;,='
+    syms = '-%+*/:;,=.'
     scobs = '()[]{}'
     text = "'"
     new_line = '\n'
@@ -17,7 +17,7 @@ class Lexems:
 This class represents a token, which is a fundamental unit of text in a programming language. Each token has a type, which indicates what kind of language construct it represents (e.g. a word, a number, a symbol, etc.), and the text of the token itself.
 """
 class Token:
-    def __init__(self, type, text) -> None:
+    def __init__(self, type: TokenTypes, text: str) -> 'Token':
         self.type = type
         self.text = text
 
@@ -88,7 +88,7 @@ class Tokenize:
                 self.continue_sym()
                 try:
                     self.at_sym = self.get_sym()
-                    if self.at_sym not in Lexems.alphabet and self.at_sym not in Lexems.numbers:
+                    if self.at_sym not in Lexems.alphabet and self.at_sym not in Lexems.numbers and self.at_sym != '_':
                         break
                     text+=self.at_sym
                 except: break
@@ -118,13 +118,19 @@ class Tokenize:
     def tokenize_nums(self):
             text = ''
             text+=self.at_sym
+
             while True:
                 self.continue_sym()
                 try:
                     self.at_sym = self.get_sym()
-                    if self.at_sym not in Lexems.numbers:
+                    if self.at_sym not in Lexems.numbers+'.':
                         break
-                    text+=self.at_sym
+                    if self.at_sym == '.' and self.get_sym(1) == '.':
+                        break
+                    if self.at_sym == '.' and text.count('.') == 0:
+                        text+='.'
+                    else:
+                        text+=self.at_sym
                 except: break
 
             self.base_tokens.append(Token(TokenTypes.NUMBER, text))
@@ -149,7 +155,7 @@ class Tokenize:
     Tokenizes a sequence of scope brackets (e.g. '(', ')', '[', ']', '{', '}') from the input code. Extracts the scope bracket character and adds a new `Token` object with the `SYM` type and the extracted text to the `base_tokens` list.
     """
     def tokenize_scobs(self):
-            self.base_tokens.append(Token(TokenTypes.SYM, self.at_sym))
+        self.base_tokens.append(Token(TokenTypes.SYM, self.at_sym))
 
     """
     Tokenizes the input code by iterating through the characters and identifying different types of tokens, such as words, symbols, numbers, and scope brackets. Adds the identified tokens to the `base_tokens` list.
@@ -206,6 +212,8 @@ class Tokenize:
                     self.add_token(TokenTypes.FALSE, 'false')
                 elif base_token.text == 'var':
                     self.add_token(TokenTypes.VAR, 'var')
+                elif base_token.text == 'not':
+                    self.add_token(TokenTypes.NOT, 'not')
                 elif base_token.text == 'const':
                     self.add_token(TokenTypes.CONST, 'const')
                 else:
@@ -245,6 +253,9 @@ class Tokenize:
 
                 if base_token.text == '/':
                     self.add_token(TokenTypes.DELENIE, '/')
+                
+                if base_token.text == '..':
+                    self.add_token(TokenTypes.DOUBLE_DOT, '..')
 
                 if base_token.text == '*':
                     self.add_token(TokenTypes.UMNATHENIE, '*')

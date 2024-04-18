@@ -30,21 +30,19 @@ class Parser:
 
         self.EOF = Token(TokenTypes.EOF, 'EOF')
 
-
     def set_tokens_map(self, tokens_map):
         self.tokens_map = tokens_map
 
-
     def exec_code(self):
         for stroke in self.result:
-            stroke.exec()
+            if not isinstance(stroke, Statements.AsignetNewVar):
+                stroke.exec()
         
 
     def parse(self):
         while not self.match(TokenTypes.EOF):
             state = self.statement()
             self.result.append(state)
-
 
     """
     Parses a single statement in the input code. Supports the following statement types:
@@ -58,17 +56,21 @@ class Parser:
         Statement: The parsed statement.
     """
     def statement(self) -> Statement:
-            current_token = self.get_token()
-            if current_token.type == TokenTypes.VAR and self.get_token(1).type == TokenTypes.WORD and self.get_token(2).type == TokenTypes.EQUAL:
-                return self.var_asignet_state()
-            elif current_token.type == TokenTypes.VAR and self.get_token(1).type == TokenTypes.WORD:
-                return self.var_asignet_base_var_state()
-            elif current_token.type == TokenTypes.CONST and self.get_token(1).type == TokenTypes.WORD and self.get_token(2).type == TokenTypes.EQUAL:
-                return self.let_asignet_state()
-            elif current_token.type == TokenTypes.WORD and self.get_token(1).type == TokenTypes.EQUAL:
-                return self.asignet_state()
-            else:
-                BaseError.NOT_SUPORTED_STATEMENT()
+        current_token = self.get_token()
+        if current_token.type == TokenTypes.VAR and self.get_token(1).type == TokenTypes.WORD and self.get_token(2).type == TokenTypes.EQUAL:
+            return self.var_asignet_state()
+        elif current_token.type == TokenTypes.VAR and self.get_token(1).type == TokenTypes.WORD:
+            return self.var_asignet_base_var_state()
+        elif current_token.type == TokenTypes.CONST and self.get_token(1).type == TokenTypes.WORD and self.get_token(2).type == TokenTypes.EQUAL:
+            return self.let_asignet_state()
+        elif current_token.type == TokenTypes.WORD and self.get_token(1).type == TokenTypes.EQUAL:
+            return self.asignet_state()
+        elif current_token.type == TokenTypes.WORD and self.get_token(1).type == TokenTypes.KVSCOB_L:
+
+            return self.asignet_arr_state()
+        else:
+            return self.expression()
+            BaseError.NOT_SUPORTED_STATEMENT()
 
     """
     Parses an assignment statement in the input code.
@@ -92,6 +94,18 @@ class Parser:
                 var_value = self.expression()
 
                 return Statements.Asignet(var_name, var_value)  
+            
+    def asignet_arr_state(self) -> Statement:
+            current_token = self.get_token()
+            self.match(TokenTypes.WORD)
+            self.match(TokenTypes.KVSCOB_L)
+            index = self.expression().eval().value
+            self.match(TokenTypes.KVSCOB_R)
+            if self.match(TokenTypes.EQUAL):
+                var_name = current_token.text
+                var_value = self.expression()
+
+                return Statements.Asignet(var_name, var_value, index)  
 
     """
     Parses a variable assignment statement in the input code.
@@ -114,7 +128,7 @@ class Parser:
             if self.match(TokenTypes.EQUAL):
                 var_name = current_token.text
                 var_value = self.expression()
-
+                
                 return Statements.AsignetNewVar(var_name, var_value, True)  
         
     """
@@ -132,12 +146,12 @@ class Parser:
         Statement: The parsed base variable assignment statement.
     """
     def var_asignet_base_var_state(self) -> Statement:
-            self.match(TokenTypes.VAR)
-            current_token = self.get_token()
-            self.match(TokenTypes.WORD)
-            var_name = current_token.text
+        self.match(TokenTypes.VAR)
+        current_token = self.get_token()
+        self.match(TokenTypes.WORD)
+        var_name = current_token.text
 
-            return Statements.AsignetBaseNewVar(var_name, True) 
+        return Statements.AsignetBaseNewVar(var_name, True) 
         
     """
     Parses a constant assignment statement in the input code.
@@ -166,6 +180,18 @@ class Parser:
 
     def expression(self) -> Expression:
         return self.additive()
+    
+    def function_expression(self) -> Expression:
+        funct_name = self.consume(TokenTypes.WORD)
+        self.consume(TokenTypes.SCOB_L)
+        funct = copy(FunctionExp(funct_name, []))
+        while not self.match(TokenTypes.SCOB_R):
+            arg = self.expression()
+
+            funct.add_arg(arg)
+            self.match(TokenTypes.ZAPYT)
+
+        return copy(funct)
     
 
     def additive(self):
@@ -206,23 +232,69 @@ class Parser:
             return UnaryExp( self.primary(), '++')
         if self.match(TokenTypes.MINUS_MINUS):
             return UnaryExp( self.primary(), '--')
+        if self.match(TokenTypes.NOT):
+            return UnaryExp( self.primary(), 'not')
         if self.match(TokenTypes.PLUS):  
             return self.primary()
         return self.primary()
     
 
+    def is_float_number(self, text):
+        if text.count('.') == 1:
+            return True
+        elif text.count('.') > 1:
+            raise 'DOT COUNT MAXED!!'
+        elif text.count('.') == 0:
+            return False
+    
+    def array_expression(self):
+        values = []
+        array_number_to_number = False
+        array_number_to_number_and_step = False
+        while not self.match(TokenTypes.KVSCOB_R):
+            value = self.expression()
+            self.match(TokenTypes.ZAPYT)
+            if array_number_to_number and self.match(TokenTypes.DOUBLE_DOT):
+                array_number_to_number_and_step = True
+            if self.match(TokenTypes.DOUBLE_DOT):
+                array_number_to_number = True
+            values.append(value.eval())
+
+        if len(values)==2 and array_number_to_number:
+            return ArrayTwoNumberExp(values[0] ,values[1])
+        elif len(values)==3 and array_number_to_number_and_step:
+            return ArrayTwoNumberExp(values[0] ,values[1], values[2].value)
+        else: 
+            return ArrayExp(values)
+
     def primary(self):
         current = self.get_token(0)  
         if self.match(TokenTypes.NUMBER):
-            return NumberExp(int(current.text))
+            if self.is_float_number(current.text):
+                return NumberExp(float(current.text))
+            else:
+                return NumberExp(int(current.text))
+        if self.match(TokenTypes.KVSCOB_L):
+            return self.array_expression()
         if self.match(TokenTypes.TEXT):
             return StringExp(str(current.text))
         if self.match(TokenTypes.TRUE):
             return BoolExp(True)
         if self.match(TokenTypes.FALSE):
             return BoolExp(False)
+        elif current.type == TokenTypes.WORD and self.get_token(1).type == TokenTypes.SCOB_L:
+            return Statements.Function(self.function_expression()).expr
         if self.match(TokenTypes.WORD):
-            return VariableExp(current.text)
+
+            if self.get_token(0).type == TokenTypes.KVSCOB_L:
+                
+                self.match(TokenTypes.KVSCOB_L)
+                index = self.expression().eval().value
+                self.match(TokenTypes.KVSCOB_R)
+                return VariableExp(current.text, index)
+            else :
+                return VariableExp(current.text)
+
         
         if self.match(TokenTypes.SCOB_L):
             expr = self.expression()
@@ -235,6 +307,13 @@ class Parser:
         else:
             self.next_token()
             return True
+        
+    def consume(self, token_type: str) -> bool:
+        current = self.get_token(0)
+        if token_type != current.type:
+            BaseError.CONSUME_ERROR(token_type, current.type)
+        self.next_token()
+        return current.text
         
 
     def basic_match(self, token_type) -> bool:
