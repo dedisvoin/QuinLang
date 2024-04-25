@@ -1,29 +1,24 @@
-from source.TokenizeFunct import (
-    Tokenize, 
-    Lexems
-)
-from source.ParserFunct import Parser
+from src.ml_tokenizer import tokenizer_api
+from src.ml_parser import parser_api
+from src.ml_parser import variables
 
-class Interpretator:
-    def __init__(self, file_name) -> None:
-        self.file_name = file_name
-        self.tokenizor = Tokenize(file_name)
-        self.parser = Parser()
-        self.parser.set_tokens_map(self.tokenizor.tokens)
+class Compiler:
+    def __init__(self, _file_name: str, _debug: bool = False) -> None:
+        self.T = tokenizer_api.Tokenizer(_file_name, _debug)
+        self.E = parser_api.Executer()
+        
+    def compile(self):
+        self.T.run()
+        self.E.send_tokens(self.T.get_tokens())
     
+    def execute(self):
+        self.E.parse()
+        self.E.execute()
 
-    def view_tokens_map(cls):
-        cls.tokenizor.out_tokens()
-        return cls
+C = Compiler(r'test.cpp',1)
 
-    def run(cls):
-        cls.tokenizor.tokenize()
-        cls.parser.parse()
-        return cls
+C.compile()
+C.execute()
 
 
-interpretator = (
-    Interpretator('test.qn')
-    .run()
-    .view_tokens_map()
-)
+variables.Variables.out_variables()
