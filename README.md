@@ -109,7 +109,7 @@
                 |
        список   |
           |     |
-  forin (arr -> n){
+  forin (arr :-> n){
     out(n)
   }
 ~~~
