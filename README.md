@@ -31,6 +31,34 @@
        
 ~~~
 
+доступ к элементам списка
+~~~js
+  let (auto) arr = [1,2,[3,4,5,[6,7,8]]]
+
+                 
+  out(arr[2][-1]|)
+~~~
+после обращения обязательно ставим символ ограничения ```|```
+
+## Структкуры данных
+~~~c++
+            идентификаторы аргументов и их типы
+                            |
+    имя структуры           |
+           |                |
+  struct Person {           |
+      Name: <str>          -|
+      Age: <int, float>    -|
+  }
+
+    ключевое слово для создания объекта структуры
+                    |
+  let (struc) p1 = new Person('Ivan', 16)
+  
+  out(p1)
+~~~
+данный код выведет ```[['Name', 'Ivan'], ['Age', 16]]``` !это не список, к нему невозможно обратиться по индексу!
+
 ## Конструкции if, else, (else if).
 ## простейшая конструкция if-else.
 ~~~js
@@ -84,6 +112,23 @@
          |
   устанавливает состояние которое срабатывает, когда остальные состояния являются ложными
 ~~~
+
+если необходимо проверить валидность через выражение можно сделать так.
+~~~js
+  fn <int, none, list> test(inp: list) {
+      match true -> {
+          case (lambda (l: list) :-> {len(l)} : (inp)) < 5 -> 
+              return :-> inp
+          case inp[-1] | == 7 -> 
+              return :-> inp
+          case _ -> 
+              return :-> inp[-1] |
+      }
+  }
+  
+  out(test([1,2,3,4,5,6,7]))
+~~~
+по очереди проверяет вылидность выражений и выполняет соответствующие блоки кода
 
 # Циклы
 ## Цикл For.
@@ -156,7 +201,7 @@
                   |
  тип функции      |    аргумент
        |          |       |
-  fn (void) print_value(value: int){
+  fn <void> print_value(value: int){
     out(value)                  |
   }                             |
                                 |
@@ -164,13 +209,14 @@
 
   print_value(10)
   print_value(20-40)
+
 ~~~
 создание функции.
 ~~~js
-возвращаемый тип  
+возвращаемыйе типы
        |          
-  fn (str) str_repeat(value: str, count: int){
-    return -> value * count       
+  fn <str> str_repeat(value: str, count: int){
+    return :-> value * count       
   }                             
                                 
   out(str_repeat('Hello', 4))
@@ -179,7 +225,7 @@
 # Lambda выражения.
 создание lambda выражений, присваивание lambda выражения какой-либо переменной, и ее последующий вызов.
 ~~~js
-  let (call) a = lambda (a: int, b: int) -> {(a + b) / 2}
+  let (call) a = lambda (a: int, b: int) :-> {(a + b) / 2}
 
   out(
     a~(10,20) + 10
@@ -194,7 +240,7 @@ lambda выражения также поддерживают динамичес
   let (auto) val_b = false
 
   if (
-      lambda (a: bool, b: bool) -> {a || b} : (val_a, val_b)
+      lambda (a: bool, b: bool) :-> {a || b} : (val_a, val_b)
   ) {
     out('yes!')
   }
