@@ -58,6 +58,41 @@
   out(p1)
 ~~~
 данный код выведет ```[['Name', 'Ivan'], ['Age', 16]]``` !это не список, к нему невозможно обратиться по индексу!
+доступ к элементам структуры можно получить с помощью ```->```
+~~~c++
+  struct Person {
+      Name: <str>
+      Age: <int, float>
+  }
+  
+  let (struc) p1 = new Person('Ivan', 16)
+  
+  out(p1 -> Name)
+~~~
+данный код выведет ```Ivan```
+
+структуры также поддерживают вложенность
+~~~C++
+  struct collider {
+      radius: <int, float>
+      border_radius: <int, float>
+  }
+  
+  struct Person {
+      Name: <str>
+      Age: <int, float>
+      collider: <struc>
+  }
+  
+  let (struc) p1 = new Person(
+      'Ivan', 
+      16,
+      new collider(100,10)
+  )
+  
+  out(p1 -> collider -> radius)
+~~~
+доступ к элементам структуры можно получить последовательно обращаясь к эелементам с помощью ```->```
 
 ## Конструкции if, else, (else if).
 ## простейшая конструкция if-else.
@@ -81,17 +116,17 @@
   let (int, str, int) n1, oper, n2 =
     int(input('input number1 -> ')),
     input('input operation -> '),
-    int(input('input number1 -> ')),
+    int(input('input number1 -> '));
 
 
   if (oper == '+') {
-    out(m1+n2)
+    out(n1+n2)
   } else if (oper == '-') {
-    out(m1 - n2)
+    out(n1 - n2)
   } else if (oper == '*') {
-    out(m1 * n2)
+    out(n1 * n2)
   } else if (oper == '/') {
-    out(m1 / n2)
+    out(n1 / n2)
   }
   
 ~~~
