@@ -12,11 +12,14 @@ class Variables:
         for name in self.__variables:
             self.__buffer_vaariables[name] = copy(self.__variables[name])
 
+
     @classmethod
     def out_buffer(self):
+
         self.__variables = {}
         for name in self.__buffer_vaariables:
             self.__variables[name] = copy(self.__buffer_vaariables[name])
+
 
     @classmethod
     def out_variables(self):

@@ -1,8 +1,14 @@
 import os, sys
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
-from GLib.window import *
-from GLib.inputs import *
-from GLib.drawing import *
+
+try:
+    from GLib.window import *
+    from GLib.inputs import *
+    from GLib.drawing import *
+except:
+    from ..GLib.window import *
+    from ..GLib.inputs import *
+    from ..GLib.drawing import *
 
 
 function_names = [
@@ -18,7 +24,8 @@ function_names = [
     ['gl_mouse_click_left', 'bool'],
     ['gl_mouse_click_right', 'bool'],
     ['gl_draw_circle', 'none'],
-    ['gl_math_distance', 'float']
+    ['gl_math_distance', 'float'],
+    ['gl_keybord_getpress', 'bool']
 ]
 version = '0.5'
 
@@ -90,3 +97,7 @@ def gl_math_distance(_pos1, _pos2, _stroke: int = 0):
     if test_type(_pos1, 'list', 'distance', _stroke) and test_type(_pos2, 'list', 'distance', _stroke):
         return Values.ValFloat(distance([val.get_value() for val in _pos1.get_value()], [val.get_value() for val in _pos2.get_value()]))
 
+
+def gl_keybord_getpress(_key, _stroke: int = 0):
+    if test_type(_key, 'str', 'getpress', _stroke):
+        return Values.ValBool(Keyboard.is_pressed(_key.get_value()))

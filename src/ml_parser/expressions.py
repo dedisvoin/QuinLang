@@ -2,8 +2,10 @@ from typing import Any
 from src.ml_parser.value_mchine import (
     Values, ValueTypes
 )
+from src.ml_parser.structures import *
 from src.ml_parser.variables import Variables
 from src.ml_parser.errors import Errors
+
 
 
 class Expression:
@@ -274,15 +276,40 @@ class ArrayGetExpr:
         self.__index = _index
         self.__stroke = _stroke
 
+
     def eval(self):
-        index = self.__index.eval()
+        indexes = []
+        for ind in self.__index:
+            indexes.append(ind.eval().get_value())
+        
         
         if Variables.is_in(self.__name):
             if Variables.get(self.__name)[0].get_type() == ValueTypes.LIST:
-                try:
-                    return Variables.get(self.__name)[0].get_value()[index.get_value()]
-                except:
-                    Errors.ERROR_LIST_INDEX_OUT(index.get_value(), len(Variables.get(self.__name)[0].get_value()), self.__stroke)
+
+                arr = Variables.get(self.__name)[0]
+                if len(indexes) == 1:
+                    try:
+                        return arr.get_value()[indexes[0]]
+                    except:
+                        Errors.ERROR_LIST_INDEX_OUT(indexes[0], len(Variables.get(self.__name)[0].get_value()), self.__stroke)
+                else:
+                    try:
+                        i = 0
+                        sub_arr = []
+                        while i < len(indexes):
+                            index = indexes[i]
+                            i+=1
+                            if sub_arr != []:
+                                if i == len(indexes):
+                                    sub_arr = sub_arr.get_value()
+                                else:
+                                    sub_arr = sub_arr.get_value()[index]
+                            else:
+                                sub_arr = arr.get_value()[index]
+                        
+                        return sub_arr[index]
+                    except:
+                        Errors.ERROR_LIST_INDEX_OUT(index, len(sub_arr), self.__stroke)
 
 
 class DiapozonExpr:
@@ -319,8 +346,10 @@ class LambdaExpr:
         if len(self.__args) == len(evalues_args):
             
             for i, argument in enumerate(self.__args):
-                if argument[1] == evalues_args[i].get_type() or argument[1] == 'any':
+                if (evalues_args[i].get_type() in argument[1]) or  ('any' in  argument[1]) :
                     Variables.set(argument[0], evalues_args[i], True, argument[1])
+                else:
+                    Errors.ERROR_LAMBDA_ARGUMENT(evalues_args[i].get_type(), argument[1], i, self.__stroke,)
             
             value = self.__expr.eval()
             Variables.out_buffer()
@@ -331,6 +360,9 @@ class LambdaExpr:
 
     def get_type(self):
         return Values.ValStr('call').get_value()
+    
+    def get_value(self):
+        return f'Lambda expression {self.__args} {self.__expr}'
 
 
 class lambdaCallExpr:
@@ -340,14 +372,17 @@ class lambdaCallExpr:
         self.__stroke = _stroke
 
     def eval(self):
-        lambda_value = Variables.get(self.__name)
-        
-        if lambda_value[2] == 'call':
-            lambda_value = lambda_value[0]
+        try:
+            lambda_value = Variables.get(self.__name)
+            
+            if lambda_value[2] == 'call':
+                lambda_value = lambda_value[0]
 
-            return lambda_value.eval(self.__args)
+                return lambda_value.eval(self.__args)
 
-        else:
+            else:
+                Errors.ERROR_LABMDA_NOT_FOUND(self.__name, self.__stroke)
+        except:
             Errors.ERROR_LABMDA_NOT_FOUND(self.__name, self.__stroke)
         
     
@@ -358,7 +393,74 @@ class BasiclambdaCallExpr:
 
     def eval(self):
         Variables.in_buffer()
+        
         val = self.__expr.eval(self.__args)
         Variables.out_buffer()
         return val
             
+class StructExpr:
+    def __init__(self, _name, _values, _stroke) -> None:
+        self.__name = _name
+        self.__values = _values
+        self.__stroke = _stroke
+
+    def eval(self):
+        values = [val.eval() for val in self.__values]
+        struct_constructer = StructureConstructs.get(self.__name)
+        elements = []
+        for i, val in enumerate(struct_constructer):
+            if values[i].get_type() in val[1] or val[1][0] == 'any':
+                elements.append([val[0], values[i]])
+            else:
+                Errors.ERROR_STRUCT_INIT(self.__name, values[i].get_type(), val[1], i, self.__stroke)
+        
+        return Structure(self.__name, elements)
+    
+class StructGetExpr:
+    def __init__(self, _name, _val_name) -> None:
+        self.__name = _name
+        self.__val_name = _val_name
+        
+
+    def iterate_get(self, elems, i):
+        
+        for elem in elems:
+            if elem[0] == self.__val_name[i]:
+                if i == len(self.__val_name)-1:
+                    
+                    return elem[1]
+                else:
+                    return self.iterate_get(elem[1].get_values(), i+1)
+
+    def eval(self):
+        elems = Variables.get(self.__name)[0].get_values()
+        
+        if len(self.__val_name) == 1:
+            for elem in elems:
+                if elem[0] == self.__val_name[0]:
+                    return elem[1]
+        else:
+            return self.iterate_get(elems, 0)
+
+class UkazatelExpr:
+    def __init__(self, _name) -> None:
+        self.__name = _name
+
+    def eval(self):
+        from src.ml_parser.functions import Functions
+        fun = Functions.get(self.__name)
+        return fun
+
+class IfExpr:
+    def __init__(self, _validate, _true, _false) -> None:
+        self.__validate_expr = _validate
+        self.__true_expr = _true
+        self.__false_expr = _false
+
+    def eval(self):
+        value = self.__validate_expr.eval().get_value()
+
+        if value == True:
+            return self.__true_expr.eval()
+        else:
+            return self.__false_expr.eval()

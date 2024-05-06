@@ -1,11 +1,13 @@
 from copy import copy
 from typing import Any
 import random
+
 from src.ml_parser.value_mchine import (
     ValueTypes, Values
 )
 from src.ml_parser.errors import Errors, test_type, test_instance
 from src.ml_parser.expressions import LambdaExpr
+from src.ml_parser.variables import Variables
 
 def convert_int(_value: Values.ValInt | Values.ValStr | Values.ValFloat, _stroke = 0) -> Values.ValInt:
     try:
@@ -47,8 +49,7 @@ def print_value(*_values: list[Any], _stroke = 0):
     except:...
     print(*printed_values)
 
-def println_value(*_values: list[Any], _stroke = 0):
-    print(_values)
+
 
 def input_value(_value: Values.ValStr = Values.ValStr(''), _stroke = 0):
     if _value.get_type() == ValueTypes.STR:
@@ -90,6 +91,10 @@ def print_value(*_values: list[Values.ValBool | Values.ValInt | Values.ValList |
     c_values = convert_values(_values)
     print(*c_values)
 
+def println_value(*_values: list[Values.ValBool | Values.ValInt | Values.ValList | Values.ValFloat | Values.ValStr], _stroke = 0):
+    c_values = convert_values(_values)
+    print(*c_values, end=' ')
+
 
 def len_list_or_str(_value: Values.ValList | Values.ValStr, _stroke = 0):
     if isinstance(_value, (Values.ValList, Values.ValStr)):
@@ -118,3 +123,79 @@ def fn_filter(_arr_intr: Values.ValList, _lambda, _stroke):
             if _lambda.eval([elem]).get_value() == True:
                 arr.append(elem)
         return Values.ValList(arr)
+    
+def fn_map(_arr_intr: Values.ValList, _lambda, _stroke):
+    from src.ml_parser.statements import Statemets
+    arr = []
+    
+    if test_type(_arr_intr, ['list','str'], 'map', _stroke):
+        if isinstance(_lambda, list):
+            args = _lambda[3]
+            state = _lambda[0]
+            ret_type = _lambda[2]
+
+           
+            if _arr_intr.get_type() == 'list':
+                for elem in _arr_intr.get_value():
+                    
+                    if elem.get_type() in args[0][1]:
+                        Variables.set(args[0][0], elem, True, elem.get_type())
+                    else:
+                        Errors.ERROR_ARGUMENT_TYPE('callback', args[0][0], args[0][1], elem.get_type(), _stroke, 0)
+                    try:
+                        state.exec()
+                    except Statemets.ReturnState as exp:
+                        
+                        val = exp.get_result()
+                        
+                        if not (val.get_type() in ret_type):
+                            Errors.ERROR_OUT_ARGUMENT_TYPE('callback', ret_type, val.get_type(), _stroke)
+                        arr.append(val)
+            elif _arr_intr.get_type() == 'str':
+
+                for elem in _arr_intr.get_value():
+                    elem = Values.ValStr(elem)
+                    if elem.get_type() == args[0][1]:
+                        Variables.set(args[0][0], elem, True, elem.get_type())
+                    else:
+                        Errors.ERROR_ARGUMENT_TYPE('callback', args[0][0], args[0][1], elem.get_type(), _stroke, 0)
+                    try:
+                        state.exec()
+                    except Statemets.ReturnState as exp:
+                        
+                        val = exp.get_result()
+                        
+                        if not (val.get_type() in ret_type):
+                            Errors.ERROR_OUT_ARGUMENT_TYPE('callback', ret_type, val.get_type(), _stroke)
+                        arr.append(val)
+
+
+            
+            return Values.ValList(arr)
+                
+        elif test_instance(_lambda, LambdaExpr, _stroke, 'map'):
+            dummy = []
+            
+            for elem in _arr_intr.get_value():
+                if isinstance(elem, str):
+                    dummy.append(Values.ValStr(elem))
+                else:
+                    dummy.append(copy(elem))
+            _arr_intr = Values.ValList(dummy)
+
+            if _arr_intr.get_type() == 'list':
+                for elem in _arr_intr.get_value():
+                    arr.append(_lambda.eval([copy(elem)]))
+                
+                
+                return Values.ValList(arr)
+            
+        
+def fn_bin(_int_or_float_value: Values.ValInt | Values.ValFloat, _stroke):
+    if test_type(_int_or_float_value, ['int'], 'bin', _stroke):
+        data = bin(_int_or_float_value.get_value())[2:]
+        return Values.ValStr(data)
+    
+def fn_number(_str_value: Values.ValStr, _osn_number: Values.ValInt = Values.ValInt(2), _stroke: int = 0):
+    if test_type(_str_value, ['str'], 'number', _stroke) and test_type(_osn_number, ['int'], 'number', _stroke):
+        return Values.ValInt(int(_str_value.get_value(), _osn_number.get_value()))

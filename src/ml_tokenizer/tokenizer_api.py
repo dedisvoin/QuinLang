@@ -1,11 +1,15 @@
-from time import time
+from time import sleep, time
 from typing import Any
+
+from colorama import Fore, Style
 from src.ml_tokenizer import tokenizer_debugs
 from src.ml_tokenizer.tokens import (
     Token, TokenTypes, Lexems
 )
 from src.ml_tokenizer.tokens_files_manager import (save_tokens, load_tokens)
 from src.ml_parser.errors import set_file
+from tqdm import tqdm
+
 
 def open_code_file(_file_name: str) -> list[str]:
     file = open(_file_name, 'r', encoding='UTF-8')
@@ -40,18 +44,23 @@ def convert_tokens_to_code(_tokens: list[Token]) -> list[str]:
         
 
 class Lexer:
-    def __init__(self, _data: list[str]) -> 'Lexer':
+    def __init__(self, _data: list[str], _debug) -> 'Lexer':
         self.__data = _data
         self.__pos = 0
         self.__stroke = 0
         self.__basic_tokens = []
         self.__tokens = []
+        self.__debug = _debug
+        self.normalize_data()
 
 
     @property
     def basic_tokens(self) -> list[Token]:
         return self.__basic_tokens
     
+    def normalize_data(self):
+        self.__data = [stroke.replace('|', ' | ') for stroke in self.__data]
+        self.__data = [stroke.replace(',', ' , ') for stroke in self.__data]
 
     @property
     def tokens(self) -> list[Token]:
@@ -110,7 +119,9 @@ class Lexer:
     
 
     def generate_tokens(self):
-        for token in self.basic_tokens:
+        
+        for token in tqdm(self.basic_tokens, desc=f'{Style.BRIGHT}{Fore.YELLOW}Tokenization process{Fore.RESET}',smoothing=0.3, colour='yellow') if self.__debug else self.basic_tokens:
+
             if token.get_type() == TokenTypes.Basic.WORD:
                 if token.get_data() == 'fn':
                     self.add_token(TokenTypes.FN, token.get_line(), token.get_data())
@@ -146,6 +157,10 @@ class Lexer:
                     self.add_token(TokenTypes.LAMBDA, token.get_line(), token.get_data())
                 elif token.get_data() == 'using':
                     self.add_token(TokenTypes.USING, token.get_line(), token.get_data())
+                elif token.get_data() == 'struct':
+                    self.add_token(TokenTypes.STRUCT, token.get_line(), token.get_data())
+                elif token.get_data() == 'new':
+                    self.add_token(TokenTypes.NEW, token.get_line(), token.get_data())
                 else:
                     self.add_token(TokenTypes.Basic.WORD, token.get_line(), token.get_data())
 
@@ -154,6 +169,8 @@ class Lexer:
                     self.add_token(TokenTypes.DOUBLE_EQUAL, token.get_line(), token.get_data())
                 if token.get_data() == '||':
                     self.add_token(TokenTypes.OR, token.get_line(), token.get_data())
+                if token.get_data() == '|':
+                    self.add_token(TokenTypes.STOP_LINE, token.get_line(), token.get_data())
                 if token.get_data() == '&&':
                     self.add_token(TokenTypes.AND, token.get_line(), token.get_data())
                 if token.get_data() == '<':
@@ -202,29 +219,38 @@ class Lexer:
                     self.add_token(TokenTypes.RIGHT_RECT_BRACK, token.get_line(), token.get_data())
                 if token.get_data() == '->':
                     self.add_token(TokenTypes.STRELA_RIGHT, token.get_line(), token.get_data())
+                if token.get_data() == '<-':
+                    self.add_token(TokenTypes.STRELA_LEFT, token.get_line(), token.get_data())
                 if token.get_data() == ',':
                     self.add_token(TokenTypes.COMMA, token.get_line(), token.get_data())
+                if token.get_data() == '.':
+                    self.add_token(TokenTypes.DOT, token.get_line(), token.get_data())
                 if token.get_data() == '~':
                     self.add_token(TokenTypes.SNAKE, token.get_line(), token.get_data())
                 if token.get_data() == '_':
                     self.add_token(TokenTypes.THUNDER, token.get_line(), token.get_data())
                 if token.get_data() == '!':
                     self.add_token(TokenTypes.VOSCL, token.get_line(), token.get_data())
+                if token.get_data() == '&':
+                    self.add_token(TokenTypes.UKAZATEL, token.get_line(), token.get_data())
+                if token.get_data() == ':->':
+                    self.add_token(TokenTypes.STRELA_RIGHT_AND_DOTS, token.get_line(), token.get_data())
             if token.get_type() == TokenTypes.Basic.NUMBER:
                 self.add_token(TokenTypes.Basic.NUMBER, token.get_line(), token.get_data())
             if token.get_type() == TokenTypes.Basic.TEXT:
                 self.add_token(TokenTypes.Basic.TEXT, token.get_line(), token.get_data())
 
-        self.add_token(TokenTypes.EOF, token.get_line(), 'EOF')
-
+        try:
+            self.add_token(TokenTypes.EOF, token.get_line(), 'EOF')
+        except:
+            self.add_token(TokenTypes.EOF, 1, 'EOF')
 
     def run(self) -> None:
         self.generate_base_tokens()
         self.generate_tokens()
     
     def save_tokens(self) -> None:
-        save_tokens(self.basic_tokens, r'data\basic_tokens.json')
-        save_tokens(self.tokens, r'data\tokens.json')
+        save_tokens(self.tokens, r'tokens.json')
         
 
     def add_token_basic(self, _type: TokenTypes, _line: int, _data: Any | None = None) -> Token:
@@ -326,15 +352,17 @@ class Lexer:
             
 
 class Tokenizer:
-    def __init__(self, _file_name: str, _debug: bool = False) -> 'Tokenizer':
-        set_file(_file_name)
+    def __init__(self, _file_name: str, _debug: bool = False, _fp: str = None) -> 'Tokenizer':
+        
         self.__file_name = _file_name
         if self.__file_name!= 'None':
             self.__data = open_code_file(self.__file_name)
-            self.__lexer = Lexer(self.__data)
+            self.__lexer = Lexer(self.__data, _debug)
+            set_file(_file_name, self.__data)
         else:
             self.__data = _file_name
             self.__lexer = None
+        self.__fp = _fp
         
         
         
@@ -357,7 +385,7 @@ class Tokenizer:
     def from_text(self, _text: list[str], _debug: bool = False) -> 'Tokenizer':
         T = Tokenizer('None', _debug)
         T.set_data(_text)
-        T.set_lexer(Lexer(T.get_data()))
+        T.set_lexer(Lexer(T.get_data(), False))
         return T
         
     
@@ -389,6 +417,7 @@ class Tokenizer:
         
         
         if self.__debug:
+            self.__lexer.save_tokens()
             self.out_tokenize_time(start_time, end_time)
             self.out_file()
             self.out_basic_tokens()

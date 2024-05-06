@@ -1,4 +1,5 @@
 from copy import copy
+import os
 from src.ml_parser.value_mchine import (
     ValueTypes, Values
 )
@@ -6,17 +7,20 @@ from src.ml_tokenizer.tokens import (
     Token, TokenTypes
 )
 from src.ml_parser.expressions import (
-    IntExpr, FloatExpr, StringExpr, UnaryExpr, BinaryExpr, VarExpr, BasiclambdaCallExpr, 
-    ArrayExpr, FunctExpr, BoolExpr, CondExpr, ArrayGetExpr, DiapozonExpr, NoneExpr, LambdaExpr, lambdaCallExpr
+    IntExpr, FloatExpr, StringExpr, UnaryExpr, BinaryExpr, VarExpr, BasiclambdaCallExpr, StructExpr, StructGetExpr, 
+    ArrayExpr, FunctExpr, BoolExpr, CondExpr, ArrayGetExpr, DiapozonExpr, NoneExpr, LambdaExpr, lambdaCallExpr, UkazatelExpr,
+    IfExpr
 )
 from src.ml_parser.statements import Statemets
+from src.ml_parser.variables import Variables
 from src.ml_parser.errors import Errors
 from colorama import Fore
 
 class Parser:
-    def __init__(self) -> None:
+    def __init__(self, _debug) -> None:
         self.__tokens = []
         self.__tokens_count = 0
+        self.__debug = _debug
 
         self.__pos = 0
         self.__executes = []
@@ -65,12 +69,68 @@ class Parser:
             return self.state_break()
         if current_token.get_type() == TokenTypes.CONTINUE and self.get_token(1).get_type() == TokenTypes.STRELA_RIGHT:
             return self.state_continue()
-        if current_token.get_type() == TokenTypes.RETURN and self.get_token(1).get_type() == TokenTypes.STRELA_RIGHT:
+        if current_token.get_type() == TokenTypes.RETURN and self.get_token(1).get_type() == TokenTypes.STRELA_RIGHT_AND_DOTS:
             return self.state_return()
         if current_token.get_type() == TokenTypes.FN:
             return self.state_function_define()
         if current_token.get_type() == TokenTypes.MATCH:
             return self.state_match()
+        if current_token.get_type() == TokenTypes.Basic.WORD and self.get_token(1).get_type() == TokenTypes.LEFT_RECT_BRACK:
+            return self.state_list_replace()
+        if current_token.get_type() == TokenTypes.Basic.WORD and self.get_token(1).get_type() == TokenTypes.STRELA_LEFT:
+            return self.state_struct_replace()
+        if current_token.get_type() == TokenTypes.STRUCT:
+            return self.state_struct_define()
+        if self.__debug:
+            print(f'{Fore.RED}Compiling error{Fore.RESET} {Fore.YELLOW}{int((self.__pos+1)/len(self.__tokens)*100)}%{Fore.RESET} [{Fore.CYAN}stroke {self.get_token().get_line()+1}{Fore.RESET}]')
+        os._exit(-1)
+        
+    def state_struct_replace(self):
+        name = self.get_token().get_data()
+        self.match(TokenTypes.Basic.WORD)
+        self.match(TokenTypes.STRELA_LEFT)
+        val_name = self.get_token().get_data()
+        self.match(TokenTypes.Basic.WORD)
+        self.match(TokenTypes.EQUAL)
+        expr = self.expression()
+        return Statemets.StructureElementReplace(name, val_name, expr)
+        
+    def state_struct_define(self):
+        self.match(TokenTypes.STRUCT)
+        name = self.get_token().get_data()
+        self.match(TokenTypes.Basic.WORD)
+        self.match(TokenTypes.LEFT_CURLY_BRACK)
+        values = []
+        while not self.match(TokenTypes.RIGHT_CURLY_BRACK):
+            arg_name = self.get_token().get_data()
+            self.match(TokenTypes.Basic.WORD)
+            self.match(TokenTypes.DOUBLE_DOT)
+            arg_types = []
+            if self.get_token().get_type() == TokenTypes.Basic.WORD:
+                arg_types.append(self.get_token().get_data())
+                self.match(TokenTypes.Basic.WORD)
+            elif self.get_token().get_type() == TokenTypes.LESS:
+                self.match(TokenTypes.LESS)
+                while not self.match(TokenTypes.BIGGER):
+                    arg_types.append(self.get_token().get_data())
+                    self.match(TokenTypes.Basic.WORD)
+                    self.match(TokenTypes.COMMA)
+            values.append([arg_name, arg_types])
+        return Statemets.StructureSet(name, values)
+
+
+        
+    def state_list_replace(self):
+        name = self.get_token().get_data()
+        self.match(TokenTypes.Basic.WORD)
+        index_exprs = []
+        while not self.match(TokenTypes.EQUAL):
+            self.match(TokenTypes.LEFT_RECT_BRACK)
+            index_exprs.append(self.expression())
+            self.match(TokenTypes.RIGHT_RECT_BRACK)
+        
+        value = self.expression()
+        return Statemets.ListElementReplace(name, index_exprs, value)
         
     def state_lib_load(self):
         self.match(TokenTypes.USING)
@@ -79,7 +139,7 @@ class Parser:
             stroke = self.get_token().get_line()
             self.match(TokenTypes.Basic.TEXT)
             
-            return Statemets.LibLoading(lib_name, stroke)
+            return Statemets.LibLoading(lib_name, stroke, self.__debug)
         
     def state_match(self):
         self.match(TokenTypes.MATCH)
@@ -98,37 +158,47 @@ class Parser:
                 eval_and_exec_values.append([expr, execute])
             else:
                 Errors.ERROR_MATCH_WAIT_CASE(stroke)
-        if len(eval_and_exec_values)<=0:
+        
+        if len(eval_and_exec_values)==0:
             Errors.ERROR_INVALID_MATCH_CONSTRUCTION(stroke)
         return Statemets.MatchCaseState(value_expr, eval_and_exec_values, stroke)
 
         
     def state_function_define(self):
         self.match(TokenTypes.FN)
-        self.match(TokenTypes.LEFT_BRACK)
-        if self.get_token().get_type() == TokenTypes.Basic.WORD:
-            funtion_return_type = self.get_token().get_data()
+        self.match(TokenTypes.LESS)
+        funtion_return_type = []
+        while not self.match(TokenTypes.BIGGER):
+            funtion_return_type.append(self.get_token().get_data())
             self.match(TokenTypes.Basic.WORD)
-            self.match(TokenTypes.RIGHT_BRACK)
-            if self.get_token().get_type() == TokenTypes.Basic.WORD:
-                function_name = self.get_token().get_data()
+            self.match(TokenTypes.COMMA)
+        self.match(TokenTypes.BIGGER)
+        if self.get_token().get_type() == TokenTypes.Basic.WORD:
+            function_name = self.get_token().get_data()
+            self.match(TokenTypes.Basic.WORD)
+            self.match(TokenTypes.LEFT_BRACK)
+            arguments = []
+            while not self.match(TokenTypes.RIGHT_BRACK):
+                arg_name = self.get_token().get_data()
                 self.match(TokenTypes.Basic.WORD)
-                self.match(TokenTypes.LEFT_BRACK)
-                arguments = []
-                while not self.match(TokenTypes.RIGHT_BRACK):
-                    arg_name = self.get_token().get_data()
-                    self.match(TokenTypes.Basic.WORD)
-                    self.match(TokenTypes.DOUBLE_DOT)
+                self.match(TokenTypes.DOUBLE_DOT)
+                if self.match(TokenTypes.LEFT_RECT_BRACK):
+                    arg_type = []
+                    while not self.match(TokenTypes.RIGHT_RECT_BRACK):
+                        arg_type.append(self.get_token().get_data())
+                        self.match(TokenTypes.Basic.WORD)
+                        self.match(TokenTypes.COMMA)
+                else:
                     arg_type = self.get_token().get_data()
-                    self.match(TokenTypes.Basic.WORD)
-                    self.match(TokenTypes.COMMA)
-                    arguments.append([arg_name, arg_type])
-                statement = self.state_block()
-                return Statemets.FunctionDefineState(function_name, funtion_return_type, arguments, statement)
-            else:
-                raise 'function define_error'
+                self.match(TokenTypes.Basic.WORD)
+                self.match(TokenTypes.COMMA)
+
+                arguments.append([arg_name, arg_type])
+            statement = self.state_block()
+            return Statemets.FunctionDefineState(function_name, funtion_return_type, arguments, statement)
         else:
-            raise 'function'
+            raise 'function define_error'
+        
         
     def state_break(self):
         self.match(TokenTypes.BREAK)
@@ -137,7 +207,7 @@ class Parser:
     
     def state_return(self):
         self.match(TokenTypes.RETURN)
-        self.match(TokenTypes.STRELA_RIGHT)
+        self.match(TokenTypes.STRELA_RIGHT_AND_DOTS)
 
         return Statemets.ReturnState(self.expression())
     
@@ -150,11 +220,12 @@ class Parser:
         
         self.match(TokenTypes.FORIN)
         self.match(TokenTypes.LEFT_BRACK)
+
         
         arr_or_str = self.expression()
         self.match(TokenTypes.Basic.WORD)
         stroke = self.get_token().get_line()
-        if self.match(TokenTypes.STRELA_RIGHT):
+        if self.match(TokenTypes.STRELA_RIGHT_AND_DOTS):
         
             var_name = self.get_token().get_data()
             
@@ -266,17 +337,19 @@ class Parser:
         
         
         self.__pos-=1
-        
+        if len(var_names) == 0:
+            var_type = var_types[0]
+                
+            Errors.ERROR_VARIABLE_NAME_IS_NOT_SET(var_type, stroke)
+
         if len(var_types) == 1:
             
             if self.match(TokenTypes.EQUAL):
                 var_value = self.expression()
                 
                 return Statemets.VarAsignet(var_names[0], var_value, var_types[0], True, stroke)
-            else:
-                var_type = var_types[0]
+            
                 
-                Errors.ERROR_VARIABLE_NAME_IS_NOT_SET(var_type, stroke)
         else:
             exprs = []
             
@@ -318,7 +391,7 @@ class Parser:
         expr = self.and_condition()
 
         while True:
-            if self.match(TokenTypes.OR):
+            if self.match(TokenTypes.STOP_LINE) and self.match(TokenTypes.STOP_LINE):
                 expr = CondExpr(expr, self.and_condition(), '||', self.get_token().get_line())
                 continue
             break
@@ -424,10 +497,15 @@ class Parser:
     def get_arr_element(self, _funct_name: str):
         self.match(TokenTypes.LEFT_RECT_BRACK)
         stroke = self.get_token().get_line()
-        index = self.expression()
-        self.match(TokenTypes.RIGHT_RECT_BRACK)
+        index_exprs = []
+        while not self.match(TokenTypes.STOP_LINE):
+            self.match(TokenTypes.LEFT_RECT_BRACK)
+            index_exprs.append(self.expression())
+            self.match(TokenTypes.RIGHT_RECT_BRACK)
+
         
-        return ArrayGetExpr(_funct_name, index, stroke)
+        
+        return ArrayGetExpr(_funct_name, index_exprs, stroke)
     
 
     def lambda_call(self, _funct_name: str):
@@ -445,10 +523,57 @@ class Parser:
             self.match(TokenTypes.COMMA)
         
         return lambdaCallExpr(_funct_name, args, stroke)
+    
+    def construct_struct_object(self):
+        constructer_name = self.get_token().get_data()
+        self.match(TokenTypes.Basic.WORD)
+        line = self.get_token().get_line()
+        self.match(TokenTypes.LEFT_BRACK)
+        values = []
+        while not self.match(TokenTypes.RIGHT_BRACK):
+            values.append(self.expression())
+            self.match(TokenTypes.COMMA)
+        
+        return StructExpr(constructer_name, values, line)
+    
+    def get_struct_value(self, var_name):
+        
+        var_name = var_name.get_data()
+        names = []
+        while self.get_token().get_type() == TokenTypes.STRELA_RIGHT:
+            self.match(TokenTypes.STRELA_RIGHT)
+            names.append(self.get_token().get_data())
+            self.match(TokenTypes.Basic.WORD)
+            
+        return StructGetExpr(var_name, names)
+    
+    def ukazatel_expr(self):
+        self.match(TokenTypes.UKAZATEL)
+        name = self.get_token().get_data()
+        self.match(TokenTypes.Basic.WORD)
 
+        return UkazatelExpr(name)
+    
+    def construct_if_expr(self):
+        validate_expr = self.expression()
+        self.match(TokenTypes.STRELA_RIGHT)
+        self.match(TokenTypes.LEFT_CURLY_BRACK)
+        true_expr = self.expression()
+        self.match(TokenTypes.RIGHT_CURLY_BRACK)
+        self.match(TokenTypes.ELSE)
+        self.match(TokenTypes.LEFT_CURLY_BRACK)
+        false_expr = self.expression()
+        self.match(TokenTypes.RIGHT_CURLY_BRACK)
+        return IfExpr(validate_expr, true_expr, false_expr)
     
     def primary(self):
         current_token = self.get_token(0)  
+        if self.match(TokenTypes.IF):
+            return self.construct_if_expr()
+        # structs
+        if self.match(TokenTypes.NEW):
+            return self.construct_struct_object()
+
         # Numbers
         if self.match(TokenTypes.Basic.NUMBER):
             value = current_token.get_data()
@@ -462,20 +587,23 @@ class Parser:
             value = current_token.get_data()
             return StringExpr(value)
         
+        # True
         if self.match(TokenTypes.TRUE):
             return BoolExpr(True)
         
+        # False
         if self.match(TokenTypes.FALSE):
             return BoolExpr(False)
         
         # Functions
-
         if self.match(TokenTypes.Basic.WORD):
 
             if self.get_token().get_type() == TokenTypes.LEFT_BRACK:
                 return self.returned_function_call(current_token.get_data())
             elif self.get_token().get_type() == TokenTypes.LEFT_RECT_BRACK:
                 return self.get_arr_element(current_token.get_data())
+            elif self.get_token().get_type() == TokenTypes.STRELA_RIGHT:
+                return self.get_struct_value(current_token)
             elif self.get_token().get_type() == TokenTypes.SNAKE:
 
                 return self.lambda_call(current_token.get_data())
@@ -483,16 +611,14 @@ class Parser:
                 value = current_token.get_data()
                 stroke = current_token.get_line()
                 return VarExpr(value, stroke)
-        
-        
-            
+                
         # Brackets
         if self.match(TokenTypes.LEFT_BRACK):
             expression = self.expression()
             self.match(TokenTypes.RIGHT_BRACK)
             return expression
         
-        # thunder
+        # Thunder or None
         if self.match(TokenTypes.THUNDER):
             return NoneExpr()
         
@@ -522,9 +648,6 @@ class Parser:
             else:
                 ...
         
-
-            
-
         # lambda create
         if self.match(TokenTypes.LAMBDA):
             self.match(TokenTypes.LEFT_BRACK)
@@ -532,15 +655,30 @@ class Parser:
             args = []
             
             while not self.match(TokenTypes.RIGHT_BRACK):
+                arg_types = []
                 arg_name = self.get_token().get_data()
                 self.match(TokenTypes.Basic.WORD)
                 self.match(TokenTypes.DOUBLE_DOT)
-                arg_type = self.get_token().get_data()
-                self.match(TokenTypes.Basic.WORD)
-                self.match(TokenTypes.COMMA)
-                args.append([arg_name, arg_type])
+                
+                if self.match(TokenTypes.LESS):
+                    
+                    while not self.match(TokenTypes.BIGGER):
+                        arg_types.append(self.get_token().get_data())
+                        self.match(TokenTypes.Basic.WORD)
+                        self.match(TokenTypes.COMMA)
+                    self.match(TokenTypes.COMMA)
+                        
+                    
+                else:
+                    arg_type = self.get_token().get_data()
+                    self.match(TokenTypes.Basic.WORD)
+                    self.match(TokenTypes.COMMA)
+                    arg_types.append(arg_type)
+                
+                args.append([arg_name, arg_types])
 
-            self.match(TokenTypes.STRELA_RIGHT)
+
+            self.match(TokenTypes.STRELA_RIGHT_AND_DOTS)
             self.match(TokenTypes.LEFT_CURLY_BRACK)
             expr = self.expression()
             self.match(TokenTypes.RIGHT_CURLY_BRACK)
@@ -554,14 +692,34 @@ class Parser:
                     while not self.match(TokenTypes.RIGHT_BRACK):
                         evaluate_args.append(self.expression())
                         self.match(TokenTypes.COMMA)
+                
                 return BasiclambdaCallExpr(lambda_expr, evaluate_args)
             else:
                 return lambda_expr
 
+        # Ukazatels
+        if self.get_token().get_type() == TokenTypes.UKAZATEL and self.get_token(1).get_type() == TokenTypes.Basic.WORD:
+            return self.ukazatel_expr()
+                
+
+
     def parse(self) -> None:
+        
+        if self.__debug: 
+            print()
+            print(f'{Fore.YELLOW}start compiling ------------------------------------------------------------{Fore.RESET}')
         while not self.match(TokenTypes.EOF):
-            state = self.statement()
-            self.__executes.append(state)
+            try:
+                state = self.statement()
+                self.__executes.append(state)
+                if self.__debug:
+                    print(f'{Fore.YELLOW}Compiling{Fore.RESET} {Fore.GREEN}{int((self.__pos+1)/len(self.__tokens)*100)}%{Fore.RESET}')
+                    
+            except:
+                print(f'{Fore.RED}Compiling error{Fore.RESET} {Fore.YELLOW}{int((self.__pos+1)/len(self.__tokens)*100)}%{Fore.RESET} [stroke {self.get_token().get_line()}]')
+        if self.__debug: 
+            print(f'{Fore.YELLOW}compiling succes -----------------------------------------------------------{Fore.RESET}')
+            print()
 
     def get_states(self):
         return self.__executes
@@ -571,8 +729,10 @@ class Parser:
             state.exec()
 
 class Executer:
-    def __init__(self) -> 'Executer':
-        self.__parser = Parser()
+    def __init__(self, _debug = False) -> 'Executer':
+        self.__debug = _debug
+        self.__parser = Parser(self.__debug)
+        
 
     @property
     def parser(self) -> Parser:

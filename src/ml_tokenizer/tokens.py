@@ -66,6 +66,7 @@ class TokenTypes:
     WHILE = 'WHILE'
 
     STRELA_RIGHT = 'STRELA_RIGHT'
+    STRELA_LEFT = 'STRELA_LEFT'
 
     SNAKE = 'SNAKE'
 
@@ -81,11 +82,20 @@ class TokenTypes:
     
     USING = 'USING'
 
+    STRUCT = 'STRUCT'
+    NEW = 'NEW'
+    DOT = 'DOT'
+    STRELA_RIGHT_AND_DOTS = 'STRELA_RIGHT_AND_DOTS'
+
+    STOP_LINE = 'STOP_LINE'
+
+    UKAZATEL = '&'
+
 
 class Lexems:
     numbers = '0123456789'
     alphabet = 'abcdefghijklmnopqrstuvwxyz'+'abcdefghijklmnopqrstuvwxyz'.upper()
-    symvols = ':,+-/*=<>%;&|~_!'
+    symvols = ':,+-/*=<>%;&|~_!.'
     brackets = '()[]{}'
     
 

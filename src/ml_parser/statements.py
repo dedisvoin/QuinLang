@@ -4,6 +4,7 @@ from src.ml_parser.errors import Errors
 from src.ml_parser.functions import Functions, FunctionTypes, FunctionReturnType
 from src.ml_parser.value_mchine import ValueTypes,Values
 from src.ml_parser.lib_manager import load_lib
+from src.ml_parser.structures import Structure, StructureConstructs
 import sys
 
 
@@ -21,12 +22,13 @@ class RETURN_EXCEPTION(BaseException):
 class Statemets:
 
     class LibLoading:
-        def __init__(self, _name: str, _stroke: int) -> None:
+        def __init__(self, _name: str, _stroke: int, _debug) -> None:
             self.__name = _name
             self.__stroke = _stroke
+            self.__debug = _debug
 
         def exec(self):
-            load_lib(f'{self.__name}')
+            load_lib(f'{self.__name}', self.__debug)
             
 
     class VarAsignet:
@@ -120,20 +122,29 @@ class Statemets:
                     values.append(arg.eval())
             func = Functions.get(self.__name)[0]
             if isinstance(func, Statemets.BlockState):
-                function_type = Functions.get(self.__name)[2]
                 Variables.in_buffer()
+                function_type = Functions.get(self.__name)[2]
+                
                 for i, argument in enumerate(Functions.get(self.__name)[3]):
-                    if argument[1] == values[i].get_type():
-                        Variables.set(argument[0], values[i], True, argument[1])
+                    if isinstance(argument[1], list):
+                        if values[i].get_type() in argument[1]:
+                            Variables.set(argument[0], values[i], True, argument[1])
+                        else:Errors.ERROR_ARGUMENT_TYPE(self.__name, argument[0], argument[1], values[i].get_type(), self.__stroke, i)
                     else:
-                        Errors.ERROR_ARGUMENT_TYPE(self.__name, argument[0], argument[1], values[i].get_type(), self.__stroke, i)
+                        if argument[1] == values[i].get_type():
+                            Variables.set(argument[0], values[i], True, argument[1])
+                        else:Errors.ERROR_ARGUMENT_TYPE(self.__name, argument[0], argument[1], values[i].get_type(), self.__stroke, i)
             
                 try:
                     func.exec()
+                    
                 except Statemets.ReturnState as exp:
+                    Variables.out_buffer()
+
                     result = exp.get_result()
                     if function_type != 'void' and function_type != 'auto':
                         if result.get_type() == function_type:
+                            
                             return result
                         else:
                             Errors.ERROR_OUT_ARGUMENT_TYPE(self.__name, function_type, result.get_type(), self.__stroke)
@@ -144,7 +155,9 @@ class Statemets:
 
                 Variables.out_buffer()
             else:
+                Variables.in_buffer()
                 func(*values, _stroke=self.__stroke)
+                Variables.out_buffer()
         
         def eval(self):
             values = []
@@ -158,28 +171,35 @@ class Statemets:
             if isinstance(func, Statemets.BlockState):
                 function_type = Functions.get(self.__name)[2]
                 Variables.in_buffer()
+                
                 for i, argument in enumerate(Functions.get(self.__name)[3]):
-                    if argument[1] == values[i].get_type():
-                        Variables.set(argument[0], values[i], True, argument[1])
+                    if isinstance(argument[1], list):
+                        if values[i].get_type() in argument[1]:
+                            Variables.set(argument[0], values[i], True, argument[1])
+                        else:Errors.ERROR_ARGUMENT_TYPE(self.__name, argument[0], argument[1], values[i].get_type(), self.__stroke, i)
                     else:
-                        Errors.ERROR_ARGUMENT_TYPE(self.__name, argument[0], argument[1], values[i].get_type(), self.__stroke, i)
+                        if argument[1] == values[i].get_type():
+                            Variables.set(argument[0], values[i], True, argument[1])
+                        else:Errors.ERROR_ARGUMENT_TYPE(self.__name, argument[0], argument[1], values[i].get_type(), self.__stroke, i)
                 
                 
                 try:
                     func.exec()
                 except Statemets.ReturnState as exp:
                     result = exp.get_result()
-                    if function_type != 'void' and function_type != 'auto':
-                        if result.get_type() == function_type:
+                    Variables.out_buffer()
+                    
+                    if 'void' not in function_type and 'auto' not in function_type:
+                        if result.get_type() in function_type:
                             return result
                         else:
                             Errors.ERROR_OUT_ARGUMENT_TYPE(self.__name, function_type, result.get_type(), self.__stroke)
-                    elif function_type == 'auto':
+                    elif 'auto' in function_type:
                         return result
                     else:
                         Errors.ERROR_VOID_FUNCTION_NOT_BE_RETURN(self.__name, result.get_type(), self.__stroke)
 
-                Variables.out_buffer()
+                
                 
             else:
                 return func(*values, _stroke=self.__stroke)
@@ -239,8 +259,11 @@ class Statemets:
             self.__state = _state
             self.__stroke = _stroke
 
+
         def exec(self):
+
             array = self.__arr.eval()
+            
             if array.get_type() == ValueTypes.LIST:
                 array = array.get_value()
                 array_len = len(array)
@@ -341,3 +364,67 @@ class Statemets:
                     break
             else:
                 if base_expr is not None:   base_expr.exec()
+
+    class ListElementReplace:
+        def __init__(self, _name, _index_exprs, _value_expr) -> None:
+            self.__name = _name
+            self.__index_exprs = _index_exprs
+            self.__value_expr = _value_expr
+
+        def exec(self):
+            value = self.__value_expr.eval()
+
+            indexes = []
+            for expr in self.__index_exprs:
+                indexes.append(expr.eval())
+
+            arr = Variables.get(self.__name)[0]
+            
+
+            if len(indexes) == 1:
+                arr.get_value()[indexes[0].get_value()] = value
+            else:
+                i = 0
+                sub_arr = []
+                while i < len(indexes):
+                    index = indexes[i].get_value()
+                    i+=1
+                    if sub_arr != []:
+                        if i == len(indexes):
+                            sub_arr = sub_arr.get_value()
+                        else:
+                            sub_arr = sub_arr.get_value()[index]
+
+                    else:
+                        sub_arr = arr.get_value()[index]
+
+                sub_arr[index] = value
+                
+    class StructureSet:
+        def __init__(self, _name, _values) -> None:
+            self.__name = _name
+            self.__values = _values
+
+        def exec(self):
+            StructureConstructs.set_construct(self.__name, self.__values)
+            
+    class StructureElementReplace:
+        def __init__(self, _name, _name_elem, _expr) -> None:
+            self.__name = _name
+            self.__name_elem = _name_elem
+            self.__expr = _expr
+
+        def exec(self):
+            value = self.__expr.eval()
+            elems = Variables.get(self.__name)[0].get_values()
+            
+            for i in range(len(elems)):
+                if elems[i][0] == self.__name_elem:
+                    del elems[i][-1]
+                    elems[i].append(value)
+
+            
+                
+                    
+
+                    

@@ -14,7 +14,7 @@ function_names = [
 version = '0.1'
 
 from src.ml_parser.value_mchine import Values
-from src.ml_parser.errors import Errors, test_type
+from src.ml_parser.errors import Errors, test_type, test_instance
 import os
 import math
 
