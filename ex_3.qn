@@ -1,0 +1,15 @@
+fn <int> fib(n: int) {
+    let (auto, auto) f1, f2 = 1, 1;
+    let (int) i = 0
+    let (int) fib_sum = 0
+
+    while (i < n - 2) {
+        fib_sum = f1 + f2
+        f1 = f2
+        f2 = fib_sum
+        i = ++i
+    }
+    return :-> f2
+}
+
+out(fib(10))

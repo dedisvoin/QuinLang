@@ -1,0 +1,37 @@
+using 'std'
+
+let (list) arr = [
+    ['Jon', 26],
+    ['Peter', 40],
+    ['Mari', 12],
+    ['Kevin', 20]
+]
+
+
+fn <list, str> get_person(info: [int, str]) {
+    if type(info) == 'int' {
+        for (let (int) i = 0; i < len(arr); i = ++i) {
+            if arr[i][1]| == info {return :-> arr[i]|}
+        }
+        return :-> 'Not found'
+    } else if type(info) == 'str' {
+        for (let (int) i = 0; i < len(arr); i = ++i) {
+            if arr[i][0]| == info {return :-> arr[i]|}
+        }
+        return :-> 'Not found'
+    }
+}
+
+let (auto) info = std.str.split(input('enter info: '), ' ')
+if info[0]| == 'name' {
+    out(
+        get_person(info[1]|)
+    )
+} else if info[0]| == 'age' {
+    out(
+        get_person(int(info[1]|))
+    )
+} else {
+    out('error typed info')
+}
+

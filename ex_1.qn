@@ -1,0 +1,19 @@
+using 'colorama'
+
+let (auto, auto, auto) a, op, b = 
+    int(input('enter num 1: ')),
+    input('enter num operation: '),
+    int(input('enter num 2: '));
+
+let (auto) end = 
+if (op == '+') -> {a + b} else {
+    if (op == '-') -> {a - b} else {
+        if op == '*' -> {a * b} else {
+            if op == '/' -> {a / b} else {
+                colorama.fore.red+'Error operation'+colorama.fore.reset
+            }
+        }
+    }
+}
+
+out(end)

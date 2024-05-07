@@ -1,0 +1,40 @@
+using 'std'
+using 'colorama'
+
+let (list) arr = []
+
+let (str) inp = ''
+
+
+fn <bool> number_expr(text: str) {
+    let (str) nums = '0123456789'
+    let (list) flags = []
+    forin (text :-> val) {
+        forin (nums :-> num) {
+            if val == num {
+                std.list.append(flags, true)
+            }
+        }
+    }
+    if len(flags) == len(text) {
+        return :-> true
+    }
+    return :-> false
+}
+
+
+while (inp <> 'stop') {
+    inp = input(colorama.style.bright+'enter number: '+colorama.style.reset)
+    if number_expr(inp) {
+        std.list.append(arr, int(inp))
+        out('Number', inp, 'appended')
+    
+    } else if inp == 'stop' {
+        out(colorama.style.bright+colorama.fore.green+'! stped !'+colorama.fore.reset+colorama.style.reset)
+    } else {
+        out(colorama.style.bright+colorama.fore.red+'! error number !'+colorama.fore.reset+colorama.style.reset)
+    }
+}
+
+
+out(arr)

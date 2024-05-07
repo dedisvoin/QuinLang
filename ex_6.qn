@@ -1,0 +1,18 @@
+
+
+let (int, int) a, b = 
+    int(input('start: ')),
+    int(input('stop: '));
+
+let (list) arr = ~[a:->b]
+
+out('before: ', arr)
+
+arr = map(
+    arr, 
+    lambda (i: any) :-> {
+        if (i % 2 == 0) -> {i*i} else {0}
+    }
+)
+
+out('after: 'arr)

@@ -1,0 +1,80 @@
+using 'gl'
+using 'std'
+
+let (list) win_size = [1920,1080]
+gl.window.create(win_size, 'test')
+
+
+struct Vector2D {
+    x: <int, float>
+    y: <int, float>
+}
+
+fn <list> random_color() {
+    return :-> [
+        randint(0,255),
+        randint(0,255),
+        randint(0,255),
+    ]
+}
+
+fn <list> generate(count: int) {
+    let (list) arr = []
+    forin (~[0->count] :-> value) {
+        let (auto) pos = new Vector2D(200,200)
+        let (auto) speed = new Vector2D(randint(-50,50), randint(-50,50))
+        let (int) rad = randint(10,30)
+        let (list) col = random_color()
+        let (float) rb = float(randint(80, 100)/100)
+        std.list.append(arr, [pos, speed, rad, col, rb])
+    }
+    return :-> arr
+}
+
+
+
+let (float) gravity = 0.7
+let (list) balls = generate(5)
+
+while gl.loop() {
+    gl.events.update()
+
+    if (gl.mouse.press.left()) {
+        let (list) mp = gl.mouse.pos()
+        let (auto) pos = new Vector2D(mp[0]|,mp[1]|)
+        let (auto) speed = new Vector2D(randint(-20,20), randint(-20,20))
+        let (int) rad = randint(10,30)
+        let (list) col = random_color()
+        let (float) rb = float(randint(80, 100)/100)
+        std.list.append(balls, [pos, speed, rad, col, rb])
+    }
+
+    forin (balls :-> ball) {
+
+        let (auto) b_p = ball[0]|
+        let (auto) b_s = ball[1]|
+        let (auto) b_r = ball[2]|
+        let (auto) b_c = ball[3]|
+        let (auto) b_rb = ball[4]|
+        
+        b_s <- y = b_s -> y + gravity
+        b_p <- x = b_p -> x + b_s -> x
+        b_p <- y = b_p -> y + b_s -> y
+
+        if b_p -> y + b_r >= win_size[1]| {
+            b_s <- y = b_s -> y * -b_rb
+            b_s <- x = b_s -> x * 0.99
+            b_p <- y = win_size[1]|-b_r
+        } if b_p -> x + b_r >= win_size[0]| {
+            b_s <- x = b_s -> x * -0.7
+            b_p <- x = win_size[0]|-b_r
+        } if b_p -> x - b_r <= 0 {
+            b_s <- x = b_s -> x * -0.7
+            b_p <- x = b_r
+        }
+        
+        gl.draw.circle([b_p -> x, b_p -> y], b_r, b_c)
+    }
+
+    gl.window.viewfps()
+}

@@ -1,0 +1,31 @@
+using 'std'
+using 'colorama'
+
+fn <bool> number_expr(text: str) {
+    let (str) nums = '0123456789'
+    let (list) flags = []
+    forin (text :-> val) {
+        forin (nums :-> num) {
+            if val == num {
+                std.list.append(flags, true)
+            }
+        }
+    }
+    if len(flags) == len(text) {
+        return :-> true
+    }
+    return :-> false
+}
+
+
+fn <bool, str> is_even(number: [str]) {
+    if number_expr(number) {
+        match true -> {
+            case lambda (number: str) :-> {int(number) % 2 == 0}:(number) -> {return :-> true}
+            case _ -> return :-> false
+        }
+    } else return :-> colorama.fore.red+'error number'+colorama.fore.reset
+}
+
+let (auto) inp = input('enter number: ')
+out(is_even(inp))
